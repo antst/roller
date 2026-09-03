@@ -275,7 +275,11 @@ Acceptance evidence: PR CI green with the container; `pnpm
 gate:docker` green locally with the same test count; zero production
 source changes.
 
-### W-010 Release on tag push — status: open
+### W-010 Release on tag push — status: accepted 2026-09-03 (PR #7 merged into develop)
+Tag push gates, validates the tag against the manifest, creates the
+GitHub release from the CHANGELOG section, publishes with the
+version-derived dist-tag; idempotent on rerun; exercised by the next
+real tag.
 Owner: roller-exec. Branch `w-010-release-on-tag`; PR against develop.
 Owner request (2026-09-03): pushing a `vX.Y.Z` tag must produce the
 GitHub release itself. Scope: `release.yml` triggers on push of tags
