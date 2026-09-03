@@ -84,5 +84,5 @@ installable previews through pkg.pr.new once its GitHub App is installed.
 Run `pnpm gate:docker` to execute the same containerized gate used by CI.
 
 To release, update the version and changelog on `develop`, merge it to `main`,
-tag the release as `vX.Y.Z`, and publish a matching GitHub release. The release
-workflow runs the full gate before publishing to npm with trusted publishing.
+then push the matching `vX.Y.Z` tag. The release workflow runs the full gate,
+creates the GitHub release, and publishes to npm with trusted publishing.
