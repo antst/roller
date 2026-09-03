@@ -275,6 +275,24 @@ Acceptance evidence: PR CI green with the container; `pnpm
 gate:docker` green locally with the same test count; zero production
 source changes.
 
+### W-010 Release on tag push — status: open
+Owner: roller-exec. Branch `w-010-release-on-tag`; PR against develop.
+Owner request (2026-09-03): pushing a `vX.Y.Z` tag must produce the
+GitHub release itself. Scope: `release.yml` triggers on push of tags
+matching `v*` (not on release published); jobs in order: gate, then
+create the GitHub release for that tag with `gh release create` using
+the CHANGELOG.md section for that version as notes (fall back to
+auto-generated notes), `--prerelease` when the version contains a
+prerelease identifier, `permissions: contents: write`; then the
+existing npm publish with provenance (`id-token: write`), dist-tag
+derived from the version. Idempotent: rerunning on the same tag must
+not fail on an existing release. README "Development" release
+procedure becomes: bump version, changelog, merge to main, push the
+tag. No other change.
+Acceptance evidence: PR CI green; `actionlint` clean; the next real
+tag (v0.1.3 when something ships) exercises it; zero production
+source changes.
+
 ## Upstream reports
 
 - 2026-09-02 DSH Discussion (Ideas): policy-aware FileSystem delete primitive for plugins (D-003). https://github.com/deepseek-ai/deepseek-harness/discussions/5461
