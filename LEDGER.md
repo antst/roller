@@ -259,6 +259,19 @@ missing-app message; `release.yml` validated with `act` or a dry run
 is not required, but its YAML must pass `gh workflow view` after merge;
 zero production source changes.
 
+### W-009 One container for the gate, locally and in CI — status: open
+Owner: roller-exec. Branch `w-009-gate-container`; PR against develop.
+Owner request (2026-09-03), mirroring dashi W-032. One `Dockerfile` at
+the repo root on the official Node 22 image with pnpm via corepack
+from the packageManager field, git, and a UTF-8 locale (roller's gate
+needs no multiplexers); `ci.yml`'s gate job runs in that container; a
+`pnpm gate:docker` script builds the image and runs `pnpm gate` inside
+with the workspace mounted. No compose, no multi-stage, no registry
+publish, no gate changes. README "Development" gains one sentence.
+Acceptance evidence: PR CI green with the container; `pnpm
+gate:docker` green locally with the same test count; zero production
+source changes.
+
 ## Upstream reports
 
 - 2026-09-02 DSH Discussion (Ideas): policy-aware FileSystem delete primitive for plugins (D-003). https://github.com/deepseek-ai/deepseek-harness/discussions/5461
