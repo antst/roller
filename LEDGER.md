@@ -221,6 +221,34 @@ tag by the architect on merge. dashi-app pins this version (dashi
 D-033).
 Acceptance evidence: gate passes; version and changelog present.
 
+### W-008 CI/CD on GitHub Actions — status: open
+Owner: roller-exec. Branch `w-008-ci` from `develop`; pull request
+against `develop`.
+Scope: two workflow files and nothing else. `ci.yml`: on pull_request
+and on push to `develop` and `main`: checkout, pnpm via the
+`packageManager` field, Node 22, `pnpm install --frozen-lockfile`,
+`pnpm gate` (install GNU screen and tmux with apt first if the gate
+needs them; roller's does not). On pull_request and push to `develop`
+only, after the gate: publish a preview with `pnpx pkg-pr-new publish
+./packages/roller --compact`, which requires the pkg.pr.new GitHub App
+installed on the repository (owner step). `release.yml`: on GitHub
+release published (tags vX.Y.Z on `main`): gate, then `pnpm publish
+--access public --provenance --no-git-checks` in packages/roller with
+`permissions: id-token: write` for npm trusted publishing (owner
+configures the trusted publisher on npmjs.com after the first manual
+publish; until then the job fails at publish, which is acceptable and
+must not be hidden). Both workflows use `concurrency` per ref and
+`timeout-minutes`. No release automation beyond that: no version
+bumping, no changelog generation, no matrix, no caching plugins
+beyond pnpm's store cache. README gains a short "Development"
+section: branch model, preview packages, release procedure.
+Acceptance evidence: the pull request's CI run is green on GitHub
+(link it); a preview package URL from pkg.pr.new appears on the PR
+once the app is installed, or the job's log shows the exact
+missing-app message; `release.yml` validated with `act` or a dry run
+is not required, but its YAML must pass `gh workflow view` after merge;
+zero production source changes.
+
 ## Upstream reports
 
 - 2026-09-02 DSH Discussion (Ideas): policy-aware FileSystem delete primitive for plugins (D-003). https://github.com/deepseek-ai/deepseek-harness/discussions/5461
