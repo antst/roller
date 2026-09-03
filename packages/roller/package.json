@@ -7,8 +7,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://forgejo.antst.net/ai/roller.git",
+    "url": "https://github.com/antst/roller",
     "directory": "packages/roller"
+  },
+  "homepage": "https://github.com/antst/roller#readme",
+  "bugs": {
+    "url": "https://github.com/antst/roller/issues"
   },
   "type": "module",
   "main": "lib/index.js",
