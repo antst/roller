@@ -1,0 +1,25 @@
+{
+  "name": "roller-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p packages/roller/tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint packages scripts",
+    "test": "vitest run",
+    "gate": "node scripts/gate.mjs"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh": "catalog:",
+    "@deepseek-ai/dsh-llm-replay": "catalog:",
+    "@types/node": "22.20.0",
+    "oxlint": "1.76.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.8"
+  }
+}

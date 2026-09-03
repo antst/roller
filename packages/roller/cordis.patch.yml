@@ -1,0 +1,4 @@
+# File rewind for profiles built on dsh-base.
+- insert:
+    - id: roller
+      name: '@antst/roller'

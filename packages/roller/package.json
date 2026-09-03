@@ -1,0 +1,73 @@
+{
+  "name": "@antst/roller",
+  "version": "0.1.2",
+  "description": "File rewind for DeepSeek Harness",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://forgejo.antst.net/ai/roller.git",
+    "directory": "packages/roller"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "lib/**/*.js",
+    "lib/**/*.d.ts",
+    "cordis.patch.yml",
+    "validated-dsh-versions.json"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-commands": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-fs": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-sandbox": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-sandbox-policy": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-session": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-storage-domain": "0.1.2-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "catalog:",
+    "@deepseek-ai/dsh-agent": "catalog:",
+    "@deepseek-ai/dsh-agent-loop": "catalog:",
+    "@deepseek-ai/dsh-agent-loop-testkit": "catalog:",
+    "@deepseek-ai/dsh-commands": "catalog:",
+    "@deepseek-ai/dsh-fs": "catalog:",
+    "@deepseek-ai/dsh-fs-local": "catalog:",
+    "@deepseek-ai/dsh-fs-observation-policy": "catalog:",
+    "@deepseek-ai/dsh-fs-sandbox": "catalog:",
+    "@deepseek-ai/dsh-llm": "catalog:",
+    "@deepseek-ai/dsh-sandbox": "catalog:",
+    "@deepseek-ai/dsh-sandbox-policy": "catalog:",
+    "@deepseek-ai/dsh-session": "catalog:",
+    "@deepseek-ai/dsh-session-projection": "catalog:",
+    "@deepseek-ai/dsh-storage": "catalog:",
+    "@deepseek-ai/dsh-storage-domain": "catalog:",
+    "@deepseek-ai/dsh-storage-json": "catalog:",
+    "@deepseek-ai/dsh-system-prompt": "catalog:",
+    "@deepseek-ai/dsh-tool-fs": "catalog:",
+    "@deepseek-ai/dsh-tool-str-replace-editor": "catalog:",
+    "@deepseek-ai/dsh-tools": "catalog:"
+  }
+}
