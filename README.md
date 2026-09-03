@@ -75,3 +75,13 @@ than adding a restore event.
 DSH has no UI-less command entry point, so command execution is exercised
 end-to-end by dashi while roller's own profile smoke covers installation and
 startup.
+
+## Development
+
+Work branches open pull requests against the integration branch, `develop`;
+`main` contains releases. Pull requests and pushes to `develop` publish
+installable previews through pkg.pr.new once its GitHub App is installed.
+
+To release, update the version and changelog on `develop`, merge it to `main`,
+tag the release as `vX.Y.Z`, and publish a matching GitHub release. The release
+workflow runs the full gate before publishing to npm with trusted publishing.
