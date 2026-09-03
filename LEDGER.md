@@ -66,6 +66,12 @@ branches open pull requests against `develop`. CI publishes preview
 packages to pkg.pr.new from `develop` and pull requests, and to npm on
 GitHub releases (W-008).
 
+### D-008 (2026-09-03) First npm release: 0.1.2
+The owner published `@antst/roller@0.1.2` manually to npmjs.com with
+GitHub repository metadata and configured the npm trusted publisher
+for `release.yml`; later versions publish through the release
+workflow on a GitHub release. 0.1.2 is never republished.
+
 ## Work items
 
 ### W-001 Package scaffold and capture journal — status: accepted 2026-09-02 (4ced006, merged to main)
