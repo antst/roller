@@ -259,7 +259,10 @@ missing-app message; `release.yml` validated with `act` or a dry run
 is not required, but its YAML must pass `gh workflow view` after merge;
 zero production source changes.
 
-### W-009 One container for the gate, locally and in CI — status: open
+### W-009 One container for the gate, locally and in CI — status: accepted 2026-09-03 (PR #4 merged into develop)
+node:22-bookworm-slim image, non-root run against the mounted
+workspace with isolated store and node_modules volumes; hosted and
+local gates identical (15 tests); preview published.
 Owner: roller-exec. Branch `w-009-gate-container`; PR against develop.
 Owner request (2026-09-03), mirroring dashi W-032. One `Dockerfile` at
 the repo root on the official Node 22 image with pnpm via corepack
