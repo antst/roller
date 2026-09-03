@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint packages scripts",
     "test": "vitest run",
-    "gate": "node scripts/gate.mjs"
+    "gate": "node scripts/gate.mjs",
+    "gate:docker": "docker build --tag roller-gate . && docker run --rm --user \"$(id -u):$(id -g)\" --volume \"$PWD:/workspace\" --volume /workspace/.pnpm-store --volume /workspace/node_modules --volume /workspace/packages/roller/node_modules roller-gate"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "catalog:",
