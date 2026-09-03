@@ -221,7 +221,11 @@ tag by the architect on merge. dashi-app pins this version (dashi
 D-033).
 Acceptance evidence: gate passes; version and changelog present.
 
-### W-008 CI/CD on GitHub Actions — status: open
+### W-008 CI/CD on GitHub Actions — status: accepted 2026-09-03 (PR #1 merged into develop)
+ci.yml gate green on GitHub; preview step fails only until the owner
+installs the pkg.pr.new app; release.yml publishes with provenance on
+GitHub release once trusted publishing is configured; manifest
+repository URL now GitHub. Default branch set to develop.
 Owner: roller-exec. Branch `w-008-ci` from `develop`; pull request
 against `develop`.
 Scope: two workflow files and nothing else. `ci.yml`: on pull_request
