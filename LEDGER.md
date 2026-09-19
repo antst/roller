@@ -315,10 +315,16 @@ not a DSH regression: the replay package's caret peers resolved forward,
 mixing the alpha.1 loader with alpha.2 dsh-llm. The alpha.1 loader requires
 `codec.schema` (`packages/typert/loader/src/index.ts:270-280`), while the
 alpha.2 generated discoverModels codec supplies lazy `codec.create`
-(`packages/llm/llm/lib/typert.host.js:43-75`). The throwaway profile now
-uses time-based resolution to stay uniform; all 238 DSH packages resolve to
-alpha.1 and the packed profile proof passes. The replay fixture was regenerated
-as V3 because its V0 form lacked turn/step lifecycle events.
+(`packages/llm/llm/lib/typert.host.js:43-75`). The mixed command
+`dsh --profile roller-test 'load roller'` failed with
+`parameter codec is not backed by a zod v4 schema`; `pnpm why` showed
+dsh-llm-replay alpha.1 selecting dsh-llm alpha.2. There was only Zod 4.4.3,
+not a two-major conflict. The throwaway profile now uses time-based resolution
+to stay uniform: all 238 DSH packages resolve to alpha.1, the stock
+`dsh --profile headless hello` command exits 0, and the packed-profile command
+exits 0 with stdout exactly `roller profile loaded`. The same packed command
+has the same output on alpha.2. The replay fixture was regenerated as V3
+because its V0 form lacked turn/step lifecycle events.
 
 ## Upstream reports
 
