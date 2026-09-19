@@ -310,6 +310,15 @@ src/index.ts:67-73); the V0 replay fixture is regenerated as a minimal
 valid V3 fixture. Acceptance: gate summary per version in the handoff,
 each break named with file:line. Release 0.1.3 after acceptance;
 dashi W-070 waits on it for lockfile convergence.
+Builder note: The first alpha.1 profile failure was a harness assumption,
+not a DSH regression: the replay package's caret peers resolved forward,
+mixing the alpha.1 loader with alpha.2 dsh-llm. The alpha.1 loader requires
+`codec.schema` (`packages/typert/loader/src/index.ts:270-280`), while the
+alpha.2 generated discoverModels codec supplies lazy `codec.create`
+(`packages/llm/llm/lib/typert.host.js:43-75`). The throwaway profile now
+uses time-based resolution to stay uniform; all 238 DSH packages resolve to
+alpha.1 and the packed profile proof passes. The replay fixture was regenerated
+as V3 because its V0 form lacked turn/step lifecycle events.
 
 ## Upstream reports
 

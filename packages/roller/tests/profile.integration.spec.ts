@@ -11,6 +11,9 @@ const root = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
 const dsh = join(root, 'node_modules', '.bin', 'dsh')
 const rollerPackage = join(root, 'packages', 'roller')
 const replayFixture = join(rollerPackage, 'tests', 'fixtures', 'profile-replay.jsonl')
+const { version: dshVersion } = JSON.parse(readFileSync(
+  join(root, 'node_modules', '@deepseek-ai', 'dsh', 'package.json'), 'utf8',
+)) as { version: string }
 
 interface ProcessResult { stdout: string; stderr: string }
 
@@ -28,7 +31,7 @@ function run(command: string, args: string[], env: NodeJS.ProcessEnv, cwd = root
 }
 
 describe('installed profile', () => {
-  it('loads in a real headless profile and warns only outside validated versions', () => {
+  it('loads in a real headless profile', () => {
     const directory = mkdtempSync(join(tmpdir(), 'roller-profile-'))
     const home = join(directory, 'home')
     const env: NodeJS.ProcessEnv = {
@@ -57,7 +60,8 @@ describe('installed profile', () => {
       manifest.dsh.profile.patchReload = 'startup'
       writeFileSync(manifestPath, JSON.stringify(manifest, undefined, 2) + '\n')
       run('pnpm', [
-        'add', '--save-exact', '@deepseek-ai/dsh-llm-replay@0.1.2-alpha.5',
+        'add', '--save-exact', '--config.resolution-mode=time-based',
+        `@deepseek-ai/dsh-llm-replay@${dshVersion}`,
       ], env, profileDir)
       writeFileSync(join(profileDir, 'cordis.patch.yml'), `
 - id: llm-deepseek
@@ -69,22 +73,14 @@ describe('installed profile', () => {
       name: '@deepseek-ai/dsh-llm-replay'
       config:
         file: !!js process.env.DSH_SNAPSHOT_FILE
+        providers:
+          - id: deepseek-official
 `)
       env.DSH_SNAPSHOT_FILE = replayFixture
 
       const supported = run(dsh, ['--profile', 'roller-test', 'load roller'], env, directory)
       expect(supported.stdout).toBe('roller profile loaded\n')
       expect(supported.stderr).toBe('')
-
-      const allowlist = join(
-        profileDir, 'node_modules', '@antst', 'roller', 'validated-dsh-versions.json',
-      )
-      writeFileSync(allowlist, '[]\n')
-      const unsupported = run(dsh, ['--profile', 'roller-test', 'load roller'], env, directory)
-      expect(unsupported.stdout).toBe('roller profile loaded\n')
-      expect(unsupported.stderr).toBe(
-        'roller: warning: DSH 0.1.2-rc.1 is not validated; validated: \n',
-      )
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }

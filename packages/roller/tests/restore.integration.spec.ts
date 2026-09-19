@@ -23,7 +23,6 @@ import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
 import SandboxedFileSystem from '@deepseek-ai/dsh-fs-sandbox'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SandboxPolicy, { setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
 import Storage from '@deepseek-ai/dsh-storage'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
@@ -68,7 +67,6 @@ async function harness(options: { sandboxed?: boolean } = {}): Promise<Harness> 
   roots.push(root, storageRoot)
   const ctx = new Context()
   contexts.push(ctx)
-  await ctx.plugin(SessionProjectionRegistry)
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(Commands)
