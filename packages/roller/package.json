@@ -1,6 +1,6 @@
 {
   "name": "@antst/roller",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "File rewind for DeepSeek Harness",
   "publishConfig": {
     "access": "public"
