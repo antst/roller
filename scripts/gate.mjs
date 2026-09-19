@@ -26,9 +26,7 @@ const forbiddenPackages = [
 ]
 const nodeFsFiles = new Set([
   'packages/roller/src/restore-files.ts',
-  'packages/roller/src/version.ts',
   'packages/roller/lib/restore-files.js',
-  'packages/roller/lib/version.js',
 ])
 
 async function filesBelow(directory) {
@@ -48,8 +46,8 @@ function packageViolation(specifier) {
 }
 
 const failures = []
-const validatedVersions = JSON.parse(await readFile(
-  fileURLToPath(new URL('../packages/roller/validated-dsh-versions.json', import.meta.url)), 'utf8',
+const testedVersions = JSON.parse(await readFile(
+  fileURLToPath(new URL('../packages/roller/tested-dsh-versions.json', import.meta.url)), 'utf8',
 ))
 const rollerManifest = JSON.parse(await readFile(
   fileURLToPath(new URL('../packages/roller/package.json', import.meta.url)), 'utf8',
@@ -57,13 +55,10 @@ const rollerManifest = JSON.parse(await readFile(
 const dshPeers = Object.entries(rollerManifest.peerDependencies ?? {})
   .filter(([name]) => /^@deepseek-ai\/dsh(?:-|$)/u.test(name))
 if (dshPeers.length === 0) failures.push('packages/roller/package.json: no DSH peers found')
-if (validatedVersions.length !== 1) {
-  failures.push('validated-dsh-versions.json: exact peer pins require one validated version')
-} else {
-  for (const [name, version] of dshPeers) {
-    if (version !== validatedVersions[0]) {
-      failures.push(`packages/roller/package.json: ${name} peer ${version} must equal ${validatedVersions[0]}`)
-    }
+if (testedVersions.length === 0) failures.push('tested-dsh-versions.json: no tested versions')
+for (const [name, version] of dshPeers) {
+  if (version !== '>=0.1.5-rc.2') {
+    failures.push(`packages/roller/package.json: ${name} peer ${version} must equal >=0.1.5-rc.2`)
   }
 }
 const lockfile = await readFile(fileURLToPath(new URL('../pnpm-lock.yaml', import.meta.url)), 'utf8')
@@ -71,7 +66,7 @@ const packageSection = lockfile.split('\nsnapshots:\n', 1)[0]
 const lockedDsh = [...packageSection.matchAll(/^  '?(@deepseek-ai\/dsh[^@']*)@([^':]+)'?:$/gm)]
 if (lockedDsh.length === 0) failures.push('pnpm-lock.yaml: no @deepseek-ai/dsh packages found')
 for (const [, packageName, version] of lockedDsh) {
-  if (!validatedVersions.includes(version)) failures.push(`pnpm-lock.yaml: unvalidated ${packageName}@${version}`)
+  if (!testedVersions.includes(version)) failures.push(`pnpm-lock.yaml: untested ${packageName}@${version}`)
 }
 
 const packageFiles = (await filesBelow(fileURLToPath(new URL('../packages', import.meta.url))))
@@ -119,16 +114,14 @@ const captureLines = await lineCount(productionFiles.filter(path =>
 const restoreLines = await lineCount(productionFiles.filter(path =>
   /\/(?:format|index|restore|restore-files)\.ts$/u.test(path)))
 const formatterLines = await lineCount(productionFiles.filter(path => path.endsWith('/format.ts')))
-const profileLines = await lineCount(productionFiles.filter(path => path.endsWith('/version.ts')))
 if (captureLines >= 400) failures.push(`capture source is ${captureLines} lines; must remain below 400`)
 if (restoreLines >= 300) failures.push(`restore source is ${restoreLines} lines; must remain below 300`)
 if (formatterLines >= 40) failures.push(`restore formatter is ${formatterLines} lines; must remain below 40`)
-if (profileLines >= 60) failures.push(`profile source is ${profileLines} lines; must remain below 60`)
 
 if (failures.length > 0) {
   console.error(failures.join('\n'))
   process.exit(1)
 }
-console.log(`gate: DSH versions passed (${lockedDsh.length} packages and ${dshPeers.length} exact peers at ${validatedVersions.join(', ')})`)
-console.log(`gate: import lint passed (${sourceFiles.length} source files; ${productionLines} production lines; ${restoreLines} restore lines; ${profileLines} profile lines)`)
+console.log(`gate: DSH versions passed (${lockedDsh.length} packages; ${dshPeers.length} peers >=0.1.5-rc.2; tested ${testedVersions.join(', ')})`)
+console.log(`gate: import lint passed (${sourceFiles.length} source files; ${productionLines} production lines; ${restoreLines} restore lines)`)
 console.log('gate: PASS — typecheck, build, lint, tests, DSH versions, import lint')

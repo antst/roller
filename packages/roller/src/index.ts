@@ -2,7 +2,6 @@ import type { Context } from '@deepseek-ai/cordis'
 import { CaptureJournal } from './capture.js'
 import { registerRestoreCommand } from './restore.js'
 import { rollerDomainSpec } from './spec.js'
-import { warnIfUnsupportedDsh } from './version.js'
 
 export {
   MAX_CHECKPOINT_BYTES,
@@ -18,9 +17,6 @@ export const name = 'roller'
 export const inject = ['commands', 'fs', 'sandboxPolicy', 'sessions', 'storageDomain']
 
 export async function apply(ctx: Context): Promise<void> {
-  // A real profile boot installs Loader before mounting config entries
-  // (DSH packages/boot/app-boot/src/index.ts:779-789); direct test hosts do not.
-  if (ctx.get('loader') !== undefined) warnIfUnsupportedDsh()
   const domain = await ctx.storageDomain.open(rollerDomainSpec)
   ctx.effect(() => () => domain.close())
   const journal = new CaptureJournal(ctx, domain.table('checkpoints'))

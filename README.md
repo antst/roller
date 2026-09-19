@@ -16,6 +16,8 @@ Install roller into each DSH profile where file rewind should be available:
 dsh plugin --profile <name> add @antst/roller
 ```
 
+Keep every DSH package in a profile on one uniform DSH version.
+
 ## Restore files
 
 Run the native DSH command with the event sequence number of a `turn/end`:

@@ -10,7 +10,6 @@ import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
 import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SandboxPolicy from '@deepseek-ai/dsh-sandbox-policy'
 import Storage from '@deepseek-ai/dsh-storage'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
@@ -45,7 +44,6 @@ async function harness(options: { fsPolicy?: boolean } = {}): Promise<Harness> {
   const ctx = new Context()
   contexts.push(ctx)
 
-  await ctx.plugin(SessionProjectionRegistry)
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(Commands)
