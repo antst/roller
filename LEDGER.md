@@ -325,6 +325,8 @@ to stay uniform: all 238 DSH packages resolve to alpha.1, the stock
 exits 0 with stdout exactly `roller profile loaded`. The same packed command
 has the same output on alpha.2. The replay fixture was regenerated as V3
 because its V0 form lacked turn/step lifecycle events.
+The `profileLines` budget check was removed because deleting `src/version.ts`
+left no profile-specific production source to measure.
 
 ## Upstream reports
 
