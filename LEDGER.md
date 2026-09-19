@@ -297,7 +297,7 @@ Acceptance evidence: PR CI green; `actionlint` clean; the next real
 tag (v0.1.3 when something ships) exercises it; zero production
 source changes.
 
-### W-011 roller on DSH 0.1.5-rc.2 and later — status: open (owner roller-exec)
+### W-011 roller on DSH 0.1.5-rc.2 and later — status: accepted 2026-09-19 (PR #11 squash-merged, released 0.1.3)
 Branch `w-011-dsh-rc2`. Scope: roller builds, tests, and the real-profile
 proof pass on 0.1.5-rc.2, 0.1.6-alpha.1 and 0.1.6-alpha.2; every
 `@deepseek-ai/*` peer range becomes `>=0.1.5-rc.2` (dashi D-041; pnpm's
