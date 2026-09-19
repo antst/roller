@@ -297,6 +297,20 @@ Acceptance evidence: PR CI green; `actionlint` clean; the next real
 tag (v0.1.3 when something ships) exercises it; zero production
 source changes.
 
+### W-011 roller on DSH 0.1.5-rc.2 and later — status: open (owner roller-exec)
+Branch `w-011-dsh-rc2`. Scope: roller builds, tests, and the real-profile
+proof pass on 0.1.5-rc.2, 0.1.6-alpha.1 and 0.1.6-alpha.2; every
+`@deepseek-ai/*` peer range becomes `>=0.1.5-rc.2` (dashi D-041; pnpm's
+peer check admits newer prereleases under that floor), exact versions
+only in devDependencies, catalog and lockfile; the runtime "not
+validated" warning in version.ts is deleted and validated-dsh-versions.json
+stays only as the CI tested list; the redundant SessionProjectionRegistry
+mount is removed (rc.2 testkit mounts it, agent-loop-testkit
+src/index.ts:67-73); the V0 replay fixture is regenerated as a minimal
+valid V3 fixture. Acceptance: gate summary per version in the handoff,
+each break named with file:line. Release 0.1.3 after acceptance;
+dashi W-070 waits on it for lockfile convergence.
+
 ## Upstream reports
 
 - 2026-09-02 DSH Discussion (Ideas): policy-aware FileSystem delete primitive for plugins (D-003). https://github.com/deepseek-ai/deepseek-harness/discussions/5461
