@@ -12,5 +12,7 @@ npm install --global @deepseek-ai/dsh
 dsh plugin --profile <profile> add @antst/roller
 ```
 
+roller 0.1.4 requires DSH 0.2.0-rc.2 or newer.
+
 Full documentation, source, and issue tracker:
 https://forgejo.antst.net/ai/roller

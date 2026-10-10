@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
+import * as AgentLoopTestkit from '@deepseek-ai/dsh-agent-loop-testkit'
 import Commands from '@deepseek-ai/dsh-commands'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
 import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
@@ -44,7 +44,11 @@ async function harness(options: { fsPolicy?: boolean } = {}): Promise<Harness> {
   const ctx = new Context()
   contexts.push(ctx)
 
-  await mountAgentLoopTestDependencies(ctx)
+  await AgentLoopTestkit.mountAgentLoopTestDependencies(ctx)
+  if ('provideWorkingDirectoryFixture' in AgentLoopTestkit) {
+    const provide = AgentLoopTestkit.provideWorkingDirectoryFixture as (ctx: Context, directory: string) => void
+    provide(ctx, root)
+  }
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(Commands)
   await ctx.plugin(Storage)

@@ -14,7 +14,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        dsh: [0.2.0-rc.2, 0.2.1-alpha.2]
+    env:
+      DSH_TEST_VERSION: ${{ matrix.dsh }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: bash scripts/gate-docker.sh
+
   publish:
+    needs: gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -26,7 +44,7 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
-      - run: pnpm gate
+      - run: pnpm build
       - name: Select release metadata
         id: release
         run: |

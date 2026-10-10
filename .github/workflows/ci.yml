@@ -18,6 +18,11 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      matrix:
+        dsh: [0.2.0-rc.2, 0.2.1-alpha.2]
+    env:
+      DSH_TEST_VERSION: ${{ matrix.dsh }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -25,7 +30,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm gate:docker
+      - run: bash scripts/gate-docker.sh
       - name: Publish preview
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop'
+        if: (github.event_name == 'pull_request' || github.ref == 'refs/heads/develop') && matrix.dsh == '0.2.0-rc.2'
         run: pnpx pkg-pr-new publish ./packages/roller --compact --pnpm

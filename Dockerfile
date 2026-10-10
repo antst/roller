@@ -1,6 +1,6 @@
 FROM node:22-bookworm-slim
 
-ENV CI=true COREPACK_HOME=/tmp/corepack LANG=C.UTF-8 LC_ALL=C.UTF-8
+ENV CI=true COREPACK_HOME=/tmp/corepack NPM_CONFIG_CACHE=/tmp/npm-cache LANG=C.UTF-8 LC_ALL=C.UTF-8
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends git \
@@ -11,4 +11,4 @@ RUN apt-get update \
 
 WORKDIR /workspace
 
-CMD ["sh", "-c", "pnpm install --frozen-lockfile && pnpm gate"]
+CMD ["node", "scripts/run-version-gate.mjs"]
