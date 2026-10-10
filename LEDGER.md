@@ -328,6 +328,17 @@ because its V0 form lacked turn/step lifecycle events.
 The `profileLines` budget check was removed because deleting `src/version.ts`
 left no profile-specific production source to measure.
 
+### W-116 DSH 0.2 legs — status: accepted 2026-10-10 (PR #14 squash-merged; released as 0.1.4)
+Accepted 2026-10-10 (roller PR #14, squash 5a5b86e; released as
+0.1.4, tag v0.1.4, run 38066085938). Production source unchanged; installs now
+require DSH >=0.2.0-rc.2 and cordis >=4.0.4; the unavailable
+dsh-code-runtime devDependency is gone; the working-directory fixture
+is provided from the DSH testkit where it exports one (0.2.1-alpha.2)
+and the committed graph is rc.2; the tested matrix is 0.2.0-rc.2 and
+0.2.1-alpha.2 with CLI-derived cordis pins. Evidence: gate 15/15 on
+both legs locally and hosted (run 38065677438), 280/291 uniform DSH
+records. Verifier: haiku eight-point review.
+
 ## Upstream reports
 
 - 2026-09-02 DSH Discussion (Ideas): policy-aware FileSystem delete primitive for plugins (D-003). https://github.com/deepseek-ai/deepseek-harness/discussions/5461
