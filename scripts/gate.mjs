@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import { extname, join, relative } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { assertPinnedGraph, deriveCliPins } from './dsh-cli-pins.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const checks = [
@@ -9,6 +10,7 @@ const checks = [
   ['build', ['run', 'build']],
   ['lint', ['run', 'lint']],
   ['tests', ['run', 'test']],
+  ['peers', ['peers', 'check']],
 ]
 
 for (const [label, args] of checks) {
@@ -56,18 +58,37 @@ const dshPeers = Object.entries(rollerManifest.peerDependencies ?? {})
   .filter(([name]) => /^@deepseek-ai\/dsh(?:-|$)/u.test(name))
 if (dshPeers.length === 0) failures.push('packages/roller/package.json: no DSH peers found')
 if (testedVersions.length === 0) failures.push('tested-dsh-versions.json: no tested versions')
-for (const [name, version] of dshPeers) {
-  if (version !== '>=0.1.5-rc.2') {
-    failures.push(`packages/roller/package.json: ${name} peer ${version} must equal >=0.1.5-rc.2`)
+const selectedVersion = process.env.DSH_TEST_VERSION || testedVersions[0]
+if (!testedVersions.includes(selectedVersion)) failures.push(`DSH ${selectedVersion} is not in the tested matrix`)
+for (const workflow of ['ci.yml', 'release.yml']) {
+  const source = await readFile(join(root, '.github/workflows', workflow), 'utf8')
+  const matrix = /dsh: \[([^\]]+)\]/.exec(source)?.[1].split(',').map(value => value.trim())
+  if (JSON.stringify(matrix) !== JSON.stringify(testedVersions)) {
+    failures.push(`${workflow}: DSH matrix must equal tested-dsh-versions.json`)
   }
+}
+for (const [name, version] of dshPeers) {
+  if (version !== `>=${testedVersions[0]}`) {
+    failures.push(`packages/roller/package.json: ${name} peer ${version} must equal >=${testedVersions[0]}`)
+  }
+}
+if (rollerManifest.peerDependencies?.['@deepseek-ai/cordis'] !== '>=4.0.4') {
+  failures.push('packages/roller/package.json: cordis peer must equal >=4.0.4')
 }
 const lockfile = await readFile(fileURLToPath(new URL('../pnpm-lock.yaml', import.meta.url)), 'utf8')
 const packageSection = lockfile.split('\nsnapshots:\n', 1)[0]
 const lockedDsh = [...packageSection.matchAll(/^  '?(@deepseek-ai\/dsh[^@']*)@([^':]+)'?:$/gm)]
 if (lockedDsh.length === 0) failures.push('pnpm-lock.yaml: no @deepseek-ai/dsh packages found')
 for (const [, packageName, version] of lockedDsh) {
-  if (!testedVersions.includes(version)) failures.push(`pnpm-lock.yaml: untested ${packageName}@${version}`)
+  if (version !== selectedVersion) failures.push(`pnpm-lock.yaml: ${packageName}@${version} must equal ${selectedVersion}`)
 }
+const cli = JSON.parse(await readFile(join(root, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8'))
+const cliPins = deriveCliPins(cli.dependencies)
+const catalog = await readFile(join(root, 'pnpm-workspace.yaml'), 'utf8')
+for (const [name, pin] of Object.entries(cliPins)) {
+  if (!catalog.includes(`  '${name}': ${pin}\n`)) failures.push(`pnpm-workspace.yaml: ${name} must equal CLI minimum ${pin}`)
+}
+try { assertPinnedGraph(lockfile, cliPins) } catch (error) { failures.push(String(error)) }
 
 const packageFiles = (await filesBelow(fileURLToPath(new URL('../packages', import.meta.url))))
   .filter(path => path.endsWith('package.json'))
@@ -122,6 +143,6 @@ if (failures.length > 0) {
   console.error(failures.join('\n'))
   process.exit(1)
 }
-console.log(`gate: DSH versions passed (${lockedDsh.length} packages; ${dshPeers.length} peers >=0.1.5-rc.2; tested ${testedVersions.join(', ')})`)
+console.log(`gate: DSH versions passed (${lockedDsh.length} packages at ${selectedVersion}; ${dshPeers.length} peers >=${testedVersions[0]}; tested ${testedVersions.join(', ')})`)
 console.log(`gate: import lint passed (${sourceFiles.length} source files; ${productionLines} production lines; ${restoreLines} restore lines)`)
-console.log('gate: PASS — typecheck, build, lint, tests, DSH versions, import lint')
+console.log('gate: PASS — typecheck, build, lint, tests, peers, DSH versions, import lint')

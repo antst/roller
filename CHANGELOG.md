@@ -1,3 +1,6 @@
+0.1.4:
+- Supports DSH 0.2.0-rc.2 and 0.2.1-alpha.2; the DSH peer floor is now `>=0.2.0-rc.2`.
+- No change to roller's capture or restore behavior.
 0.1.3:
 - DSH compatibility floor: every @deepseek-ai peer is now `>=0.1.5-rc.2`; tested on 0.1.5-rc.2, 0.1.6-alpha.1 and 0.1.6-alpha.2.
 - Removed the runtime DSH version allowlist and warning; the tested-version list is CI evidence only.
