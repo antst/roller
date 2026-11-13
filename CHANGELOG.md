@@ -1,4 +1,4 @@
-0.2.0: (unreleased)
+0.2.0:
 - Require DSH 0.2.2-rc.3 and Node >=24.9.0; retire the older supported lines without relabelling their evidence.
 - Capture native apply_patch add/update/delete/move intents through the existing first-touch journal; use the published parser and the session working directory for arguments, with the original header cwd still the coverage boundary.
 - Remove covered created files through native fs.deleteFile with the native sandbox policy; retain the host-local hard-link eligibility probe.
