@@ -9,9 +9,9 @@ Package:
 All `packages/...` citations below are relative to the pinned DSH tree supplied
 for this design. They describe that version, not an assumed future API.
 
-## W-155 delta (DSH 0.2.2-rc.3, source preparation)
+## W-155 delta (DSH 0.2.2-rc.3)
 
-The architect's current rulings require roller0.2.0 and Node>=24.9.0, retire
+The architect's ruling of 2026-11-13 requires roller 0.2.0 and Node >=24.9.0, retires
 the old supported lines, and preserve this design's journal and command.
 Native apply_patch adds add/update/delete/move to capture through the existing
 write/edit and new delete intent. Published dsh-fs-patch.parsePatch owns syntax;
@@ -26,11 +26,12 @@ instead of duplicating it or unlinking the host path. The existing host-only
 regular-file/hard-link probe remains an explicit roller limitation.
 
 Ordinary rc.3 forks omit their source id. Keep the public parentSession field
-for historical forks, but refuse an inherited boundary without that authority.
-The inherited-event count and first own turn bound the refusal. A new map,
-header repair or history-content matching is forbidden. Dashi restores the
-source journal before it forks; a later fork failure is an explicit partial
-outcome. See README and the append-only W-155 ledger entry.
+for historical forks, but refuse boundaries strictly inside the inherited
+prefix without that authority. The fork point itself needs only the child's
+own journal. A new map, header repair or history-content matching is forbidden.
+A combined-rewind host must restore the source journal before it forks; dashi
+does so from 0.3.0. A later fork failure is an explicit partial outcome.
+See README for the current contract.
 
 Everything below records the old design and its original citations as history.
 

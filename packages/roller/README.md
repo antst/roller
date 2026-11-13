@@ -18,8 +18,10 @@ Coverage stays inside the session's original header cwd, even after its current
 working directory changes. Targets outside it are skipped without a roller
 notice. DSH deliberately records no ordinary-fork source since 0.2.2-alpha.2
 (dsh-session 0.2.2-rc.3 README:32); this is not a DSH bug, so restoring
-an inherited boundary there is refused. Dashi restores files on the source
-before forking; historical parentSession forks remain supported.
+a boundary strictly inside the inherited prefix there is refused. The fork
+point itself restores the child's own edits; historical parentSession forks
+remain supported. A host that rewinds both must restore files on the source
+before forking; dashi does so from 0.3.0.
 
 Full documentation, source, and issue tracker:
 https://github.com/antst/roller

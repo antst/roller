@@ -3,8 +3,8 @@
 roller is file rewind for DeepSeek Harness. It records the original contents
 of files changed by DSH's `write`, `edit`, `apply_patch`, and mutating `str_replace_editor`
 operations, then restores those files to a completed turn boundary. It does
-not change conversation history; dashi restores files on the source session
-before forking the conversation.
+not change conversation history. A host that rewinds both files and conversation
+must restore files on the source session before forking; dashi does so from 0.3.0.
 
 Linux and macOS are supported.
 
@@ -79,10 +79,11 @@ restore result is rendered from durable `command/done` text.
 DSH deliberately records no ordinary-fork source since 0.2.2-alpha.2
 (`@deepseek-ai/dsh-session` 0.2.2-rc.3 README:32: "without recording a source
 relationship"). This is an upstream design choice, not a DSH bug.
-Restoring an inherited boundary (including `start`/`0`) in such a fork is
-refused, not reported as an empty success. Own post-fork boundaries and
-historical forks with `parentSession` remain restorable. Dashi's combined
-rewind restores files on the source first, then forks the conversation.
+Restoring strictly inside the inherited prefix (including `start`/`0`) in
+such a fork is refused, not reported as an empty success. Restoring TO the
+fork point undoes the child's own edits and remains supported, as do later
+boundaries and historical forks with `parentSession`. A combined-rewind host
+must restore on the source before forking; dashi does so from 0.3.0.
 
 Removal uses native `fs.deleteFile` with the full sandbox policy. Capture and
 restore-removal eligibility still require a host-local hard-link probe; that
@@ -94,7 +95,7 @@ than adding a restore event.
 
 Roller's native service tests exercise file-tool edits and command execution;
 its installed headless-profile smoke covers loading. Combined conversation
-and file rewind is accepted separately through dashi's native path.
+and file rewind requires separate acceptance through the host's native path.
 
 ## Development
 

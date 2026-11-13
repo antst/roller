@@ -1,8 +1,7 @@
 # Roller 0.2.0 / DSH 0.2.2-rc.3
 
 Implementation and local validation; independent/hosted gates pending.
-Base develop5821c5c. The accepted phase-0
-report and architect C1/C2/R1-R3 plus the path-binding ruling govern this work.
+Base develop 5821c5c. The architect ruling of 2026-11-13 governs this work.
 No original checkout, owner profile, daemon, credential or host install is
 changed. Validation is in progress in an owned scratch checkout.
 
@@ -10,12 +9,12 @@ Initial setup evidence: frozen install completed, then typecheck refused the
 tests' missing explicit dsh-tools type augmentation; the tests now import that
 public declaration. Peer check also caught an old auto-selected group helper:
 dsh-app-boot rc.3 declares cordis-plugin-group ~1.1.0, which itself requires
-Cordis ~4.1.0 and loader ~1.1.0. Pinning published group1.1.0 in the test graph
+Cordis ~4.1.0 and loader ~1.1.0. Pinning published group 1.1.0 in the test graph
 replaces the stale1.0.4 selection. Neither correction changes product behavior
 or weakens a runtime assertion. The initial logs are retained; no native
 control had completed at that setup stage; later results are below.
 
-The first native-wiring run reached22 controls:19 passed and3 refused on
+The first native-wiring run reached 22 controls:19 passed and3 refused on
 fixture/oracle setup. The changed-directory delegation check had installed a
 policy waterfall that intentionally returns an intent without next(); isolate
 roller's terminal delegation there, while retaining policy composition in the
@@ -53,7 +52,7 @@ these oracle/setup mistakes.
   eligible planned target may be captured during preflight and never mutate.
   The journal does not claim otherwise. No operation counter is inferred.
 - Absent/existing, repeated aliases and mixed aliases share the same earliest
-  before-state. Hard links, non-files, non-UTF-8, over1MiB and outside-header
+  before-state. Hard links, non-files, non-UTF-8, over 1MiB and outside-header
   targets remain excluded. Medium/quarantine errors block delegation; ordinary
   exclusions delegate unchanged. Capturing adds bounded per-intent path probes,
   not persisted state or another filesystem grammar.
@@ -74,7 +73,7 @@ these oracle/setup mistakes.
 ## Planned order (progress recorded below)
 
 1. Native test wiring and failing-first controls, then the bounded product
-   changes; target catalog/peers/engines0.2.0 and current companion minima.
+   changes; target catalog/peers/engines 0.2.0 and current companion minima.
 2. Add/update/delete/move, mixed aliases, symlink-only, symlink destination,
    changed working-directory and outside-boundary controls. Check bytes and
    journal entries, not success text alone.
@@ -88,27 +87,27 @@ these oracle/setup mistakes.
 
 ## Binding fork-lineage correction
 
-RULING-REWIND-LINEAGE.md489cf71e: rc.3 ordinary forks omit parentSession in
+The architect ruling of 2026-11-13 confirms that rc.3 ordinary forks omit parentSession in
 both controller and SessionStore; only isSeeded/inheritedEventCount and an
 end-seed marker survive, not the source id. Public sessionQuery.traceSession
 also follows parentSession, so it cannot recover an ordinary fork's source.
-Keep parentSession ?? current.id, but refuse an inherited boundary without a
-source id, including start/0 and generated tail closers predating the first
-own turn. A truly empty inherited prefix has no hidden earlier file journal;
-its own changes remain restorable. One existing historical snapshot scan is
-reused for the own-turn cutoff, not a new session index or deprecated reader.
-Historical parentSession-bearing forks remain covered. Dashi now restores on
-the source before forking; failures and partial outcomes stay explicit.
+Keep parentSession ?? current.id, but refuse a boundary strictly inside the
+inherited prefix without a source id, including start/0. The inclusive fork
+point needs only the child's own journal. A truly empty inherited prefix has
+no hidden earlier file journal; its own changes remain restorable. No new
+session index or deprecated reader is introduced. Historical parentSession
+forks remain covered. A combined-rewind host must restore on the source before
+forking; dashi does so from 0.3.0. Failures and partial outcomes stay explicit.
 Tests must catch silent empty-success, and prove own post-fork boundaries and
 historical parent selection. No header repair, map, seed matching or fallback.
 
-The absent fork source is deliberate since0.2.2-alpha.2, per the architect's
+The absent fork source is deliberate since 0.2.2-alpha.2, per the architect's
 source correction and dsh-session rc.3 README:32. It is not an upstream bug.
 
 ## Native progress (not a full gate claim)
 
-- Corrected native wiring22/22 passed. The unchanged baseline product then
-  failed7/8 selected new controls: absent patch checkpoints, durable preflight
+- Corrected native wiring 22/22 passed. The unchanged baseline product then
+  failed 7/8 selected new controls: absent patch checkpoints, durable preflight
   refusal, inherited-prefix empty-success and the old extra-root deletion fence.
   Those failures are retained, not called native compatibility of the old line.
 - Actual destination-only move and mid-patch cancellation/recovery passed.
@@ -117,14 +116,42 @@ source correction and dsh-session rc.3 README:32. It is not an upstream bug.
 - Held-open disposal exposed a product leak: a domain was returned after its
   consumer's close effect could be registered. The architect approved the
   native async-generator effect, established before open and yielding close
-  before more ctx access. Cordis4.1 types/fiber.d.ts:43-51 documents the shape;
+  before more ctx access. Cordis 4.1 types/fiber.d.ts:43-51 documents the shape;
   lib/index.js:448-458 collects the late yielded disposer and checks epoch
   before advancing again; :530-535 drains setup before disposal, :559-562
   handles setup rejection. No private implementation record is read by roller.
 - The held-open resolution and rejection controls now pass: no domain,
   command or stale intent listener remains. Fresh reactivation succeeds.
-- Expanded native capture/restore28/28 passes, including a fresh-process JSON
+- Expanded native capture/restore 28/28 passes, including a fresh-process JSON
   domain reopen, unknown-state quarantine (no later capture or automatic retry)
   and recovery only after explicit disposal/reopen. Native prompt+tool assembly
-  is equal with/without roller (own delta0); this is not provider wire or a
+  is equal with/without roller (own delta 0); this is not provider wire or a
   server cache measurement. Full gate, below-floor and hosted remain pending.
+
+## Independent-review correction analysis (2026-11-13)
+
+Capture path matching must not turn an unrelated non-abort FsError into an
+extra native refusal or prevent a valid symlink-only edit. Such a spelling is
+ineligible for this target and is skipped; FS_ABORTED and unexpected errors
+still propagate. Durable checkpoint failures still block covered mutation.
+The reviewed bounded spelling scan remains stateless: at most spellings times
+intent events resolutions, with no per-call cache or registry. Native local
+and sandbox resolve only read path metadata; they do not request approvals,
+grant access, write files or use the network. Third-party providers are not
+established by that source audit. Two native probes compare mounted and
+unmounted results, problem counts, completed operations and actual bytes.
+
+A source-less fork can restore its own journal TO the fork point. Only
+boundaries strictly before that inclusive cut require the unavailable source
+journal. This preserves repeated rewind/retry, including a second restore on
+the child; start/0 with inherited history still refuses. Historical
+parentSession behavior and retention remain unchanged. Tests use actual
+seeded Agents and native tool mutations, then make two consecutive restores
+before creating the next fork. No lineage reconstruction is introduced.
+
+The Docker floor image must establish the repository's exact pnpm as the
+global Corepack default, because profile directories have no packageManager.
+That changes only test provisioning, not the plugin. Node type declarations
+move to the engine-floor major. Documentation describes a host contract,
+not an unaccepted host implementation. Builder notes leave the ledger and
+move to the PR; the architect owns ledger entries.

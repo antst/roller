@@ -10,6 +10,7 @@ import type { Fiber } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import * as AgentLoopTestkit from '@deepseek-ai/dsh-agent-loop-testkit'
 import Commands from '@deepseek-ai/dsh-commands'
+import { FsError } from '@deepseek-ai/dsh-fs'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
 import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
@@ -280,6 +281,70 @@ describe('roller capture journal with the published DSH host', () => {
     ].join('\n') })
     expect(JSON.stringify(refused)).toContain('patch checkpoint failure')
     await expect(readFile(join(h.root, 'blocked.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('preserves the single native problem when an unrelated patch spelling cannot resolve', async () => {
+    const h = await harness()
+    await writeFile(join(h.root, 'notdir.txt'), 'not a directory\n')
+    await writeFile(join(h.root, 'plain.txt'), 'before\n')
+    await callSuccessfully(h, 'read', { file_path: 'plain.txt' })
+    const patch = { input: [
+      '*** Begin Patch', '*** Update File: notdir.txt/child.txt', '@@', '-before', '+after',
+      '*** Update File: plain.txt', '@@', '-before', '+after', '*** End Patch',
+    ].join('\n') }
+    const mounted = await call(h, 'apply_patch', patch)
+    expect(await readFile(join(h.root, 'plain.txt'), 'utf8')).toBe('before\n')
+    await h.roller.dispose()
+    const native = await call(h, 'apply_patch', patch)
+    expect(JSON.stringify(native.content)).toContain('1 problem')
+    expect(mounted.isError).toBe(native.isError)
+    expect(mounted.error).toEqual(native.error)
+    expect(mounted.value).toEqual(native.value)
+    expect(mounted.content).toEqual(native.content)
+  })
+
+  it('preserves a native symlink edit before a later patch path becomes unresolvable', async () => {
+    const patch = { input: [
+      '*** Begin Patch', '*** Add File: foo', '+file',
+      '*** Update File: link', '@@', '-before', '+after',
+      '*** Add File: foo/x', '+child', '*** End Patch',
+    ].join('\n') }
+    async function execute(mounted: boolean) {
+      const h = await harness()
+      if (!mounted) await h.roller.dispose()
+      await writeFile(join(h.root, 'real.txt'), 'before\n')
+      await symlink('real.txt', join(h.root, 'link'))
+      await callSuccessfully(h, 'read', { file_path: 'link' })
+      const result = await call(h, 'apply_patch', patch)
+      expect(result.value).toMatchObject({ phase: 'commit', operations: [
+        { status: 'completed' }, { status: 'completed' }, { status: 'failed' },
+      ] })
+      expect(await readFile(join(h.root, 'real.txt'), 'utf8')).toBe('after\n')
+      if (mounted) expect(recordsFor(h).some(record => record.relativePath === 'real.txt')).toBe(false)
+      return JSON.stringify({ value: result.value, content: result.content }).replaceAll(h.root, '<workspace>')
+    }
+    expect(await execute(true)).toBe(await execute(false))
+  })
+
+  it('propagates structured, plain and DOM aborts from a spelling probe without delegating', async () => {
+    const h = await harness({ fsPolicy: false })
+    const target = await h.ctx.fs.resolve('abort.txt', { cwd: h.root })
+    const resolve = h.ctx.fs.resolve.bind(h.ctx.fs)
+    for (const abort of [new FsError('resolve aborted', 'FS_ABORTED'),
+      Object.assign(new Error('plain abort'), { name: 'AbortError' }), new DOMException('DOM abort', 'AbortError')]) {
+      const probe = vi.spyOn(h.ctx.fs, 'resolve').mockImplementation(async (...args) => {
+        if (args[0] === 'abort.txt') throw abort
+        return resolve(...args)
+      })
+      let delegated = false
+      try {
+        await expect(h.ctx.waterfall('fs/write-intent', target, {
+          name: 'write', arguments: { file_path: 'abort.txt' }, agent: h.owner,
+        }, () => { delegated = true })).rejects.toBe(abort)
+        expect(delegated).toBe(false)
+        expect(recordsFor(h)).toHaveLength(0)
+      } finally { probe.mockRestore() }
+    }
   })
 
   it('restores both checkpoints after a move publishes its destination but cannot remove its source', async () => {

@@ -120,7 +120,13 @@ export class CaptureJournal {
     let pathInfo: FsPathInfo | undefined
     let eligiblePath = false
     for (const path of paths) {
-      const resolved = await this.ctx.fs.resolve(path, { cwd: argumentCwd, ...(actor.signal === undefined ? {} : { signal: actor.signal }) })
+      let resolved: FsTarget
+      try {
+        resolved = await this.ctx.fs.resolve(path, { cwd: argumentCwd, ...(actor.signal === undefined ? {} : { signal: actor.signal }) })
+      } catch (error) {
+        if (error instanceof FsError && error.code !== 'FS_ABORTED') continue
+        throw error
+      }
       if (resolved.targetKey !== target.targetKey) continue
       const info = await this.ctx.fs.lstat(path, { cwd: argumentCwd }, actor.signal)
       if (info?.type === 'symlink') continue

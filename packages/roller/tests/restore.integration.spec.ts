@@ -5,6 +5,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   readlink,
   rm,
   symlink,
@@ -268,13 +269,13 @@ describe('/roller-restore', () => {
     expect(h.session.snapshotEvents().at(-1)?.type).toBe('turn/end')
   })
 
-  it('refuses inherited boundaries without a fork-source id, while own boundaries remain restorable', async () => {
+  it('refuses strictly inherited boundaries without a fork-source id, while own boundaries remain restorable', async () => {
     const h = await harness()
     const history = await buildThreeTurns(h)
     const { agent: child } = await h.ctx.agents.create({
       sessionId: SessionId(`roller-independent-fork-${++serial}`),
-      seed: buildForkSeed(h.session.snapshotEvents(), SessionSeq(history.end1)),
-      inheritedEventCount: SessionLogOffset(history.end1 + 1),
+      seed: buildForkSeed(h.session.snapshotEvents(), SessionSeq(history.end3)),
+      inheritedEventCount: SessionLogOffset(history.end3 + 1),
       meta: { cwd: h.root, isSeeded: true },
     })
     expect(child.session.header.parentSession).toBeUndefined()
@@ -285,16 +286,51 @@ describe('/roller-restore', () => {
       expect(result.text).toBe('Files from before this session was forked cannot be restored because DSH does not record the fork source.')
       expect(await readFile(history.written, 'utf8')).toBe(untouched)
     }
-    child.session.append('turn/start', { turn: 2 })
-    const ownBoundary = Number(child.session.append('turn/end', { turn: 2, reason: { kind: 'completed' } }).seq)
-    child.session.append('turn/start', { turn: 3 })
+    child.session.append('turn/start', { turn: 4 })
+    const ownBoundary = Number(child.session.append('turn/end', { turn: 4, reason: { kind: 'completed' } }).seq)
+    child.session.append('turn/start', { turn: 5 })
     const childHarness = { ...h, session: child.session, owner: child }
     await tool(childHarness, 'read', { file_path: history.written })
     await tool(childHarness, 'write', { file_path: history.written, content: 'child-owned mutation\n' })
-    child.session.append('turn/end', { turn: 3, reason: { kind: 'completed' } })
+    child.session.append('turn/end', { turn: 5, reason: { kind: 'completed' } })
     const restored = await command(h, ownBoundary, child)
     expect(restored.kind).toBe('success')
     expect(await readFile(history.written, 'utf8')).toBe(untouched)
+  })
+
+  it('restores two consecutive rewinds to the same prompt, including the child fork point', async () => {
+    const h = await harness()
+    const history = await buildThreeTurns(h)
+    const first = await command(h, history.end1)
+    expect(first.kind).toBe('success')
+    expect(await readFile(history.written, 'utf8')).toBe('turn one\n')
+    const nativeFork = h.ctx.sessions.fork(h.session, SessionSeq(history.end1))
+    expect(nativeFork.inheritedEventCount).toBe(history.end1 + 1)
+    expect(nativeFork.eventAt(SessionSeq(nativeFork.inheritedEventCount - 1))?.type).toBe('turn/end')
+    expect(nativeFork.eventAt(SessionSeq(nativeFork.inheritedEventCount))).toMatchObject({
+      type: 'session/end-seed', data: { inherited: true },
+    })
+    expect(nativeFork.header.parentSession).toBeUndefined()
+    // The native factory owns a new Agent/session transaction; take its seed
+    // and exact inherited count from the real SessionStore fork, not arithmetic.
+    const { agent: child } = await h.ctx.agents.create({
+      sessionId: SessionId(`roller-retry-fork-${++serial}`),
+      seed: nativeFork.snapshotEvents(),
+      inheritedEventCount: nativeFork.inheritedEventCount,
+      meta: { ...(nativeFork.header.cwd === undefined ? {} : { cwd: nativeFork.header.cwd }),
+        isSeeded: nativeFork.header.isSeeded },
+    })
+    child.session.append('turn/start', { turn: 2 })
+    const childHarness = { ...h, session: child.session, owner: child }
+    await tool(childHarness, 'read', { file_path: history.written })
+    await tool(childHarness, 'write', { file_path: history.written, content: 'retried prompt\n' })
+    child.session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
+    const second = await command(h, history.end1, child)
+    expect(second.kind).toBe('success')
+    expect(second.text).toContain('Written (1):\n- written.txt')
+    expect(second.text).toContain('Failed (0):')
+    expect(await readFile(history.written, 'utf8')).toBe('turn one\n')
+    expect(child.session.header.parentSession).toBeUndefined()
   })
 
   it('delegates removal to the native filesystem with its complete extra-root policy', async () => {
@@ -305,7 +341,8 @@ describe('/roller-restore', () => {
     await writeFile(file, 'delete through native policy\n')
     const target = await h.ctx.fs.resolve(file)
     const policy = { ...h.ctx.sandboxPolicy.resolve({ session: h.session }),
-      workspaceRoot: other, additionalWritableRoots: [h.root] }
+      workspaceRoot: other, additionalWritableRoots: [await realpath(h.root)] }
+    expect(h.session.header.cwd).toBe(h.root)
     const signal = new AbortController().signal
     const nativeDelete = vi.spyOn(h.ctx.fs, 'deleteFile')
     await deleteRestoredFile(h.ctx, target, policy, true, signal)

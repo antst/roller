@@ -350,32 +350,3 @@ dashi W-006 (ada4bfa) installs roller's packed build into a throwaway
 dashi profile and proves "conversation and files" restores the
 workspace to turn-one bytes and renders roller's report; this closes
 the proof deferred by D-005. No roller change was needed.
-
-### W-155 DSH 0.2.2-rc.3 and native patch coverage — status: in progress
-Builder note: implementation follows the architect's accepted phase-0 report
-and C1/C2/R1-R3 rulings (2026-11-13): roller0.2.0, Node>=24.9.0, exactly tested
-rc.3; native apply_patch add/update/delete/move and delete-intent reuse the
-first-touch journal and published parsePatch; native fs.deleteFile replaces
-the D-003 host-unlink gap, with the hard-link eligibility probe retained.
-The original D-002/D-003 statements above remain history, not current API
-claims. Work branch: w-155-dsh-022 from develop5821c5c.
-Builder note: the architect's rewind-lineage ruling (2026-11-13) names a DSH
-gap: ordinary rc.3 forks retain isSeeded/inheritedEventCount but no source id;
-both SessionController.fork and SessionStore.fork omit parentSession. Refuse
-an inherited-prefix restore without that public authority, never silently
-restore an empty journal. Historical parentSession forks still resolve their
-source; dashi restores the source first, then forks. No map, header repair or
-fallback. Native/gate evidence is pending; source preparation is not a PASS.
-Builder note: wording clarified by the architect: the absent ordinary-fork
-source is deliberate since DSH0.2.2-alpha.2 (dsh-session rc.3 README:32), not
-an upstream bug. The inherited restore refusal is a consequence of that design.
-Builder note: native Cordis4.1 held-open control exposed a consumer lifecycle
-defect: close was registered only after storage open. The architect approved
-one native async-generator effect established before open, yielding close
-before any later ctx access. This adds no registry, flag, retry or new state.
-Builder note: local Node24.9.0 gate passes31/31 on published rc.3 with330
-uniform DSH package records. Native rc.2 add refuses the floor without an
-exemption. Native model-facing prompt/tool assembly delta is0 bytes, not a
-provider-wire or cache claim. Archive6d25cccb has16 attested members. Hosted
-Linux/macOS/newest-Node, independent review and cross-dashi acceptance remain
-pending; there is no release or owner-host action.

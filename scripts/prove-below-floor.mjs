@@ -11,7 +11,8 @@ mkdirSync(evidence, { recursive: true })
 const scratch = mkdtempSync(join(tmpdir(), 'roller-below-floor-'))
 const home = join(scratch, 'home')
 const env = { ...process.env, DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1', NO_COLOR: '1',
-  npm_config_store_dir: join(scratch, 'pnpm-store'), npm_config_cache: join(scratch, 'npm-cache') }
+  PNPM_CONFIG_STORE_DIR: join(scratch, 'pnpm-store'), PNPM_CONFIG_CACHE_DIR: join(scratch, 'pnpm-cache'),
+  npm_config_cache: join(scratch, 'npm-cache') }
 const cli = ['--yes', '--package=@deepseek-ai/dsh@0.2.2-rc.2', 'dsh']
 function run(args, label) {
   const result = spawnSync('npx', [...cli, ...args], { cwd: scratch, env, encoding: 'utf8', timeout: 180_000 })
