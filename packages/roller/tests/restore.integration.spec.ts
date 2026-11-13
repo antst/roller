@@ -15,14 +15,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import * as AgentLoopTestkit from '@deepseek-ai/dsh-agent-loop-testkit'
 import Commands from '@deepseek-ai/dsh-commands'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
 import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
 import SandboxedFileSystem from '@deepseek-ai/dsh-fs-sandbox'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import { SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
+import { buildForkSeed, SessionId, SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
 import SandboxPolicy, { setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
 import Storage from '@deepseek-ai/dsh-storage'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
@@ -30,8 +30,11 @@ import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
 import * as StorageJson from '@deepseek-ai/dsh-storage-json'
 import * as ToolFs from '@deepseek-ai/dsh-tool-fs'
 import * as ToolStrReplaceEditor from '@deepseek-ai/dsh-tool-str-replace-editor'
+import type {} from '@deepseek-ai/dsh-tools'
+import WorkingDirectory from '@deepseek-ai/dsh-working-directory'
 import * as Roller from '../src/index.js'
 import type { CheckpointKey, CheckpointRecord } from '../src/index.js'
+import { deleteRestoredFile } from '../src/restore-files.js'
 
 const contexts: Context[] = []
 const roots: string[] = []
@@ -41,7 +44,7 @@ interface Harness {
   ctx: Context
   root: string
   session: ReturnType<Context['sessions']['create']>
-  owner: { session: ReturnType<Context['sessions']['create']> }
+  owner: Agent
   checkpoints: KvTable<CheckpointKey, CheckpointRecord>
 }
 
@@ -68,47 +71,47 @@ async function harness(options: { sandboxed?: boolean } = {}): Promise<Harness> 
   const ctx = new Context()
   contexts.push(ctx)
   await AgentLoopTestkit.mountAgentLoopTestDependencies(ctx)
-  if ('provideWorkingDirectoryFixture' in AgentLoopTestkit) {
-    const provide = AgentLoopTestkit.provideWorkingDirectoryFixture as (ctx: Context, directory: string) => void
-    provide(ctx, root)
-  }
-  await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(Commands)
   await ctx.plugin(Storage)
   await ctx.plugin(StorageJson, { root: storageRoot })
   await ctx.plugin(StorageDomain, { backend: 'json' })
   await ctx.plugin(SandboxPolicy, { mode: 'workspace-write', workspaceRoot: root })
   await ctx.plugin(options.sandboxed === true ? SandboxedFileSystem : LocalFileSystem, { cwd: root })
+  await ctx.plugin(WorkingDirectory)
+  const driver = await AgentLoopTestkit.mountAgentLoopTestHarness(ctx)
   await ctx.plugin(FsPolicy)
-  await ctx.plugin(ToolFs)
+  await ctx.plugin(ToolFs, { applyPatch: true })
   await ctx.plugin(ToolStrReplaceEditor)
   await ctx.plugin(Roller)
 
-  const session = ctx.sessions.create(SessionId(`roller-restore-${++serial}`), { meta: { cwd: root } })
+  const owner = await driver.create(SessionId(`roller-restore-${++serial}`), {}, { cwd: root })
+  const session = owner.session
   session.append('turn/start', { turn: 1 })
   const domain = ctx.storageDomain.get('roller')
   if (domain === undefined) throw new Error('roller domain did not open')
   const checkpoints = domain.table('checkpoints') as KvTable<CheckpointKey, CheckpointRecord>
-  return { ctx, root, session, owner: { session }, checkpoints }
+  return { ctx, root, session, owner, checkpoints }
 }
 
 async function tool(h: Harness, name: string, arguments_: unknown): Promise<void> {
-  const result = await h.ctx.tools.execute({
+  const id = ToolCallId(`roller-restore-tool-${++serial}`)
+  const batch = await h.ctx.tools.execute({
     signal: new AbortController().signal,
-    callId: ToolCallId(`roller-restore-tool-${++serial}`),
-    name,
-    arguments: arguments_,
-    agent: h.owner as never,
+    calls: [{ type: 'tool-call', id, name, arguments: JSON.stringify(arguments_) }],
+    agent: h.owner,
   })
+  expect(batch.results).toHaveLength(1)
+  expect(batch.results[0]?.callId).toBe(id)
+  const result = batch.results[0]!.result
   expect(result.isError, result.error?.message).toBe(false)
 }
 
-async function command(h: Harness, seq: number | 'start', owner = h.owner) {
+async function command(h: Harness, seq: number | 'start', owner = h.owner, signal = new AbortController().signal) {
   const execution = await h.ctx.commands.execute(
-    owner as never,
+    owner,
     `/roller-restore ${seq}`,
     [],
-    new AbortController().signal,
+    signal,
   )
   if (execution === undefined) throw new Error('roller-restore command did not resolve')
   return execution.result
@@ -242,15 +245,16 @@ describe('/roller-restore', () => {
     await expectAbsent(history.created3)
   })
 
-  it('uses a seeded child header to restore from its parent journal', async () => {
+  it('uses a historical parentSession seeded child header to restore from its parent journal', async () => {
     const h = await harness()
     const history = await buildThreeTurns(h)
-    const fork = h.ctx.sessions.fork(
-      h.session,
-      SessionSeq(history.end1),
-      SessionId(`roller-child-${++serial}`),
-    )
-    const owner = { session: fork }
+    const { agent: owner } = await h.ctx.agents.create({
+      sessionId: SessionId(`roller-child-${++serial}`),
+      seed: buildForkSeed(h.session.snapshotEvents(), SessionSeq(history.end1)),
+      inheritedEventCount: SessionLogOffset(history.end1 + 1),
+      meta: { cwd: h.root, isSeeded: true, parentSession: h.session.id },
+    })
+    const fork = owner.session
 
     const result = await command(h, history.end1, owner)
 
@@ -262,6 +266,51 @@ describe('/roller-restore', () => {
     await expectAbsent(history.created3)
     expect(fork.snapshotEvents().at(-1)?.type).toBe('command/done')
     expect(h.session.snapshotEvents().at(-1)?.type).toBe('turn/end')
+  })
+
+  it('refuses inherited boundaries without a fork-source id, while own boundaries remain restorable', async () => {
+    const h = await harness()
+    const history = await buildThreeTurns(h)
+    const { agent: child } = await h.ctx.agents.create({
+      sessionId: SessionId(`roller-independent-fork-${++serial}`),
+      seed: buildForkSeed(h.session.snapshotEvents(), SessionSeq(history.end1)),
+      inheritedEventCount: SessionLogOffset(history.end1 + 1),
+      meta: { cwd: h.root, isSeeded: true },
+    })
+    expect(child.session.header.parentSession).toBeUndefined()
+    const untouched = await readFile(history.written, 'utf8')
+    for (const boundary of [history.end1, 'start', 0] as const) {
+      const result = await command(h, boundary, child)
+      expect(result.kind).toBe('error')
+      expect(result.text).toBe('Files from before this session was forked cannot be restored because DSH does not record the fork source.')
+      expect(await readFile(history.written, 'utf8')).toBe(untouched)
+    }
+    child.session.append('turn/start', { turn: 2 })
+    const ownBoundary = Number(child.session.append('turn/end', { turn: 2, reason: { kind: 'completed' } }).seq)
+    child.session.append('turn/start', { turn: 3 })
+    const childHarness = { ...h, session: child.session, owner: child }
+    await tool(childHarness, 'read', { file_path: history.written })
+    await tool(childHarness, 'write', { file_path: history.written, content: 'child-owned mutation\n' })
+    child.session.append('turn/end', { turn: 3, reason: { kind: 'completed' } })
+    const restored = await command(h, ownBoundary, child)
+    expect(restored.kind).toBe('success')
+    expect(await readFile(history.written, 'utf8')).toBe(untouched)
+  })
+
+  it('delegates removal to the native filesystem with its complete extra-root policy', async () => {
+    const h = await harness({ sandboxed: true })
+    const other = await mkdtemp(join(tmpdir(), 'roller-policy-root-'))
+    roots.push(other)
+    const file = join(h.root, 'native-delete.txt')
+    await writeFile(file, 'delete through native policy\n')
+    const target = await h.ctx.fs.resolve(file)
+    const policy = { ...h.ctx.sandboxPolicy.resolve({ session: h.session }),
+      workspaceRoot: other, additionalWritableRoots: [h.root] }
+    const signal = new AbortController().signal
+    const nativeDelete = vi.spyOn(h.ctx.fs, 'deleteFile')
+    await deleteRestoredFile(h.ctx, target, policy, true, signal)
+    expect(nativeDelete).toHaveBeenCalledWith(target, undefined, signal, policy)
+    await expectAbsent(file)
   })
 
   it('reports a read-only deletion denial without unlinking the host file', async () => {
@@ -278,7 +327,7 @@ describe('/roller-restore', () => {
     expect(result.kind).toBe('success')
     expect(result.text).toContain('Deleted (0):\n- none')
     expect(result.text).toContain(
-      'Failed (1):\n- sandbox-denied.txt: delete: cannot delete',
+      `Failed (1):\n- sandbox-denied.txt: delete: cannot write "${created}": file access denied under read-only mode`,
     )
     expect(result.text).toContain('read-only mode')
     expect(await readFile(created, 'utf8')).toBe('stay\n')
@@ -350,10 +399,53 @@ describe('/roller-restore', () => {
     await expectAbsent(created)
   })
 
+  it('retains a successful restore prefix on cancellation and supports a later valid restore', async () => {
+    const h = await harness()
+    for (const file of ['a.txt', 'b.txt']) {
+      await writeFile(join(h.root, file), 'before\n')
+      await tool(h, 'read', { file_path: file })
+      await tool(h, 'write', { file_path: file, content: 'after\n' })
+    }
+    h.session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    const controller = new AbortController()
+    const write = h.ctx.fs.writeText.bind(h.ctx.fs)
+    const intercepted = vi.spyOn(h.ctx.fs, 'writeText').mockImplementation(async (...args) => {
+      const result = await write(...args)
+      controller.abort()
+      return result
+    })
+    // The native command registry rejects on UI cancellation and records an
+    // error, rather than returning the handler's eventual partial report.
+    await expect(command(h, 'start', h.owner, controller.signal)).rejects.toMatchObject({ name: 'AbortError' })
+    intercepted.mockRestore()
+    expect(h.session.snapshotEvents().at(-1)).toMatchObject({ type: 'command/done', data: { kind: 'error' } })
+    expect(await readFile(join(h.root, 'a.txt'), 'utf8')).toBe('before\n')
+    expect(await readFile(join(h.root, 'b.txt'), 'utf8')).toBe('after\n')
+    expect((await command(h, 'start')).text).toContain('Failed (0):')
+    expect(await readFile(join(h.root, 'b.txt'), 'utf8')).toBe('before\n')
+  })
+
+  it('reports malformed stored bytes without overwriting that path or suppressing other restores', async () => {
+    const h = await harness()
+    for (const file of ['bad.txt', 'good.txt']) {
+      await writeFile(join(h.root, file), 'before\n')
+      await tool(h, 'read', { file_path: file })
+      await tool(h, 'write', { file_path: file, content: 'after\n' })
+    }
+    h.session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    const bad = [...h.checkpoints.entries()].find(([, record]) => record.relativePath === 'bad.txt')!
+    await h.checkpoints.put(bad[0], { ...bad[1], before: { kind: 'text', contentBase64: 'invalid-base64', byteLength: 1 } })
+    const result = await command(h, 'start')
+    expect(result.text).toContain('Written (1):\n- good.txt')
+    expect(result.text).toContain('Failed (1):\n- bad.txt: write: checkpoint content is malformed')
+    expect(await readFile(join(h.root, 'bad.txt'), 'utf8')).toBe('after\n')
+    expect(await readFile(join(h.root, 'good.txt'), 'utf8')).toBe('before\n')
+  })
+
   it('returns one-line errors for malformed and unknown boundaries', async () => {
     const h = await harness()
     const malformed = await h.ctx.commands.execute(
-      h.owner as never, '/roller-restore nope', [], new AbortController().signal,
+      h.owner, '/roller-restore nope', [], new AbortController().signal,
     )
     const unknown = await command(h, 999)
 

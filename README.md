@@ -1,10 +1,10 @@
 # roller
 
 roller is file rewind for DeepSeek Harness. It records the original contents
-of files changed by DSH's `write`, `edit`, and mutating `str_replace_editor`
+of files changed by DSH's `write`, `edit`, `apply_patch`, and mutating `str_replace_editor`
 operations, then restores those files to a completed turn boundary. It does
-not change conversation history; dashi can fork the conversation before asking
-roller to restore the files.
+not change conversation history; dashi restores files on the source session
+before forking the conversation.
 
 Linux and macOS are supported.
 
@@ -13,10 +13,10 @@ Linux and macOS are supported.
 Install roller into each DSH profile where file rewind should be available:
 
 ```sh
-dsh plugin --profile <name> add @antst/roller
+dsh plugin --profile <name> add --save-exact @antst/roller@0.2.0
 ```
 
-roller 0.1.4 requires DSH 0.2.0-rc.2 or newer.
+roller 0.2.0 requires DSH 0.2.2-rc.3 and Node >=24.9.0.
 Keep every DSH package in a profile on one uniform DSH version.
 
 ## Restore files
@@ -40,9 +40,19 @@ event's `seq` to `roller-restore`.
 ## Coverage
 
 roller records changes made by DSH's `write` and `edit` tools and the `create`,
-`str_replace`, and `insert` operations of `str_replace_editor`. The first touch
+`str_replace`, and `insert` operations of `str_replace_editor`, plus native
+`apply_patch` add/update/delete/move operations. Move source and destination
+are checkpointed independently, not as an atomic transaction. The first touch
 of a path in each turn stores its before-content. Each session retains its most
 recent 100 turns, with a 1 MiB before-content limit per file.
+
+Arguments resolve against the session's current working directory, but coverage
+and stored relative paths stay anchored to the immutable header cwd. If the
+working directory moves outside that boundary, targets there are skipped with
+no roller notice, as with other excluded paths; the native tool and its report
+are unchanged. In a patch with aliases to one canonical target, an ordinary
+non-symlink path makes that target eligible; symlink-only targets stay excluded.
+Preflight can record a planned target that never mutates.
 
 roller does not promise to reverse:
 
@@ -54,8 +64,7 @@ roller does not promise to reverse:
 - directories, special files, or non-UTF-8 files;
 - files whose before-content exceeds 1 MiB;
 - paths outside the immutable session cwd;
-- mutation tools or plugin-defined writers outside the exact allowlist in
-  section 2.2;
+- mutation tools or plugin-defined writers outside the allowlist above;
 - changes older than the retained 100-turn window; or
 - deletion on a filesystem provider whose process path is not host-local.
 
@@ -67,17 +76,25 @@ unconditionally over their current contents.
 DSH command definitions have no `presentCall` or `presentResult`, so roller's
 restore result is rendered from durable `command/done` text.
 
-DSH's filesystem service has no delete operation, so roller reverses a covered
-file creation through one host-local unlink after DSH containment and sandbox
-checks.
+DSH deliberately records no ordinary-fork source since 0.2.2-alpha.2
+(`@deepseek-ai/dsh-session` 0.2.2-rc.3 README:32: "without recording a source
+relationship"). This is an upstream design choice, not a DSH bug.
+Restoring an inherited boundary (including `start`/`0`) in such a fork is
+refused, not reported as an empty success. Own post-fork boundaries and
+historical forks with `parentSession` remain restorable. Dashi's combined
+rewind restores files on the source first, then forks the conversation.
+
+Removal uses native `fs.deleteFile` with the full sandbox policy. Capture and
+restore-removal eligibility still require a host-local hard-link probe; that
+is a roller limitation, not a missing DSH delete API.
 
 DSH rejects unrecognized required session-event types and offers no ignorable
 custom-event flag, so roller uses the existing durable command lifecycle rather
 than adding a restore event.
 
-DSH has no UI-less command entry point, so command execution is exercised
-end-to-end by dashi while roller's own profile smoke covers installation and
-startup.
+Roller's native service tests exercise file-tool edits and command execution;
+its installed headless-profile smoke covers loading. Combined conversation
+and file rewind is accepted separately through dashi's native path.
 
 ## Development
 

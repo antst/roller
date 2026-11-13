@@ -1,3 +1,9 @@
+0.2.0: (unreleased)
+- Require DSH 0.2.2-rc.3 and Node >=24.9.0; retire the older supported lines without relabelling their evidence.
+- Capture native apply_patch add/update/delete/move intents through the existing first-touch journal; use the published parser and the session working directory for arguments, with the original header cwd still the coverage boundary.
+- Remove covered created files through native fs.deleteFile with the native sandbox policy; retain the host-local hard-link eligibility probe.
+- Refuse inherited-prefix restores on ordinary forks without a recorded source id; DSH deliberately records no fork source since 0.2.2-alpha.2 (dsh-session rc.3 README:32). Historical parentSession forks remain supported. Dashi restores the source before creating the rewound conversation.
+- Own storage opening through a native async effect, so disposal during opening releases the domain and cannot register stale commands or listeners.
 0.1.4:
 - Supports DSH 0.2.0-rc.2 and 0.2.1-alpha.2; the DSH peer floor is now `>=0.2.0-rc.2`.
 - No change to roller's capture or restore behavior.

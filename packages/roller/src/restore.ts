@@ -16,13 +16,14 @@ function parseSeq(rawInput: string): number | undefined {
   return Number.isSafeInteger(parsed) ? parsed : undefined
 }
 
-function latestCompletedTurn(session: Session): number {
-  const events = session.snapshotEvents()
-  for (let index = events.length - 1; index >= 0; index -= 1) {
-    const event = events[index]!
-    if (event.type === 'turn/end') return event.data.turn
+function turnHistory(session: Session): { latest: number; firstOwn: number | undefined } {
+  let latest = 0
+  let firstOwn: number | undefined
+  for (const event of session.snapshotEvents()) {
+    if (event.type === 'turn/end') latest = event.data.turn
+    if (firstOwn === undefined && event.type === 'turn/start' && session.isOwnSeq(event.seq)) firstOwn = event.data.turn
   }
-  return 0
+  return { latest, firstOwn }
 }
 
 function selectedRecords(
@@ -80,8 +81,12 @@ export async function restoreCommand(
     : source.eventAt(SessionSeq(seq))
   if (boundary?.type !== 'turn/end') return error(`No turn/end event exists at sequence ${seq}.`)
 
-  const latestTurn = latestCompletedTurn(source)
-  if (!start && latestTurn - boundary.data.turn > 100) {
+  const history = turnHistory(source)
+  if (current.header.parentSession === undefined && current.inheritedEventCount > 0
+    && (start || seq < current.inheritedEventCount || history.firstOwn === undefined || boundary.data.turn < history.firstOwn)) {
+    return error('Files from before this session was forked cannot be restored because DSH does not record the fork source.')
+  }
+  if (!start && history.latest - boundary.data.turn > 100) {
     return error(`Turn ${boundary.data.turn} is outside roller's 100-turn retention window.`)
   }
   const cwd = current.header.cwd

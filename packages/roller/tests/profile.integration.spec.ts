@@ -39,6 +39,8 @@ describe('installed profile', () => {
       DSH_HOME: home,
       DSH_TELEMETRY_DISABLED: '1',
       NO_COLOR: '1',
+      npm_config_store_dir: join(directory, 'pnpm-store'),
+      npm_config_cache: join(directory, 'npm-cache'),
     }
     try {
       run('pnpm', ['--dir', rollerPackage, 'pack', '--pack-destination', directory], env)
