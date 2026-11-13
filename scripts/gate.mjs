@@ -1,6 +1,7 @@
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile, readdir, realpath } from 'node:fs/promises'
 import { extname, join, relative } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { assertPinnedGraph, deriveCliPins } from './dsh-cli-pins.mjs'
 
@@ -72,8 +73,8 @@ for (const [name, version] of dshPeers) {
     failures.push(`packages/roller/package.json: ${name} peer ${version} must equal >=${testedVersions[0]}`)
   }
 }
-if (rollerManifest.peerDependencies?.['@deepseek-ai/cordis'] !== '>=4.0.4') {
-  failures.push('packages/roller/package.json: cordis peer must equal >=4.0.4')
+if (rollerManifest.peerDependencies?.['@deepseek-ai/cordis'] !== '>=4.1.0') {
+  failures.push('packages/roller/package.json: cordis peer must equal >=4.1.0')
 }
 const lockfile = await readFile(fileURLToPath(new URL('../pnpm-lock.yaml', import.meta.url)), 'utf8')
 const packageSection = lockfile.split('\nsnapshots:\n', 1)[0]
@@ -82,8 +83,11 @@ if (lockedDsh.length === 0) failures.push('pnpm-lock.yaml: no @deepseek-ai/dsh p
 for (const [, packageName, version] of lockedDsh) {
   if (version !== selectedVersion) failures.push(`pnpm-lock.yaml: ${packageName}@${version} must equal ${selectedVersion}`)
 }
-const cli = JSON.parse(await readFile(join(root, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8'))
-const cliPins = deriveCliPins(cli.dependencies)
+const cliManifest = await realpath(join(root, 'node_modules/@deepseek-ai/dsh/package.json'))
+const cli = JSON.parse(await readFile(cliManifest, 'utf8'))
+const cliRequire = createRequire(cliManifest)
+const appBoot = JSON.parse(await readFile(cliRequire.resolve('@deepseek-ai/dsh-app-boot/package.json'), 'utf8'))
+const cliPins = deriveCliPins({ ...cli.dependencies, ...appBoot.peerDependencies })
 const catalog = await readFile(join(root, 'pnpm-workspace.yaml'), 'utf8')
 for (const [name, pin] of Object.entries(cliPins)) {
   if (!catalog.includes(`  '${name}': ${pin}\n`)) failures.push(`pnpm-workspace.yaml: ${name} must equal CLI minimum ${pin}`)

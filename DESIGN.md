@@ -1,11 +1,39 @@
 # roller design
 
-Status: proposed for architect acceptance, 2026-09-02. Package:
+Status: historical accepted design, 2026-09-02. The W-155 delta below
+supersedes its version-specific capture, deletion and fork-source statements.
+Package:
 `@antst/roller`, MIT. Target: DeepSeek Harness (DSH) `0.1.2-alpha.5` at commit
 `49a606bc5b5934603f22a26957a07dc799ab0291`.
 
 All `packages/...` citations below are relative to the pinned DSH tree supplied
 for this design. They describe that version, not an assumed future API.
+
+## W-155 delta (DSH 0.2.2-rc.3)
+
+The architect's ruling of 2026-11-13 requires roller 0.2.0 and Node >=24.9.0, retires
+the old supported lines, and preserve this design's journal and command.
+Native apply_patch adds add/update/delete/move to capture through the existing
+write/edit and new delete intent. Published dsh-fs-patch.parsePatch owns syntax;
+the current session directory resolves arguments, while header cwd still owns
+containment and journal-relative paths. A deduplicated target is eligible if
+any ordinary non-symlink batch path names it; symlink-only targets stay excluded.
+Moves capture both endpoints independently; preflight and partial outcomes
+never imply atomic rollback.
+
+DSH now supplies fs.deleteFile; restore forwards the complete native policy
+instead of duplicating it or unlinking the host path. The existing host-only
+regular-file/hard-link probe remains an explicit roller limitation.
+
+Ordinary rc.3 forks omit their source id. Keep the public parentSession field
+for historical forks, but refuse boundaries strictly inside the inherited
+prefix without that authority. The fork point itself needs only the child's
+own journal. A new map, header repair or history-content matching is forbidden.
+A combined-rewind host must restore the source journal before it forks; dashi
+does so from 0.3.0. A later fork failure is an explicit partial outcome.
+See README for the current contract.
+
+Everything below records the old design and its original citations as history.
 
 ## 1. Contract
 

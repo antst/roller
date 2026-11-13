@@ -2,8 +2,11 @@ import { createHash } from 'node:crypto'
 import { relative, sep } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { FsError } from '@deepseek-ai/dsh-fs'
-import type { FsTarget } from '@deepseek-ai/dsh-fs'
+import type { FsPathInfo, FsTarget } from '@deepseek-ai/dsh-fs'
+import { parsePatch } from '@deepseek-ai/dsh-fs-patch'
+import type { Session } from '@deepseek-ai/dsh-session'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
+import type {} from '@deepseek-ai/dsh-working-directory'
 import { hasMultipleHardLinks } from './restore-files.js'
 import {
   MAX_CHECKPOINT_BYTES,
@@ -12,18 +15,10 @@ import {
   type CheckpointRecord,
 } from './spec.js'
 
-interface SessionLike {
-  readonly header: { readonly id: string; readonly cwd?: string }
-  snapshotEvents(): ReadonlyArray<{
-    readonly type: string
-    readonly data: unknown
-  }>
-}
-
 interface MutationActor {
-  readonly name: 'write' | 'edit' | 'str_replace_editor'
+  readonly name: 'write' | 'edit' | 'str_replace_editor' | 'apply_patch'
   readonly arguments: Record<string, unknown>
-  readonly agent: { readonly session: SessionLike }
+  readonly agent: { readonly session: Session }
   readonly signal?: AbortSignal
 }
 
@@ -36,20 +31,25 @@ function mutationActor(value: object | undefined): MutationActor | undefined {
   const session = value.agent.session
   if (!isRecord(session) || !isRecord(session.header) || typeof session.snapshotEvents !== 'function') return undefined
   if (typeof session.header.id !== 'string') return undefined
-  if (value.name !== 'write' && value.name !== 'edit' && value.name !== 'str_replace_editor') return undefined
+  if (value.name !== 'write' && value.name !== 'edit' && value.name !== 'str_replace_editor' && value.name !== 'apply_patch') return undefined
   return value as unknown as MutationActor
 }
 
-function requestedPath(actor: MutationActor): string | undefined {
+function requestedPaths(actor: MutationActor): string[] {
+  if (actor.name === 'apply_patch') {
+    if (typeof actor.arguments.input !== 'string') return []
+    return parsePatch(actor.arguments.input).flatMap(operation => operation.kind === 'update' && operation.moveTo !== undefined
+      ? [operation.path, operation.moveTo] : [operation.path])
+  }
   if (actor.name === 'write' || actor.name === 'edit') {
-    return typeof actor.arguments.file_path === 'string' ? actor.arguments.file_path : undefined
+    return typeof actor.arguments.file_path === 'string' ? [actor.arguments.file_path] : []
   }
   const command = actor.arguments.command
-  if (command !== 'create' && command !== 'str_replace' && command !== 'insert') return undefined
-  return typeof actor.arguments.path === 'string' ? actor.arguments.path : undefined
+  if (command !== 'create' && command !== 'str_replace' && command !== 'insert') return []
+  return typeof actor.arguments.path === 'string' ? [actor.arguments.path] : []
 }
 
-function openTurn(session: SessionLike): number | undefined {
+function openTurn(session: Session): number | undefined {
   let boundary: { readonly type: string; readonly data: unknown } | undefined
   const events = session.snapshotEvents()
   for (let index = events.length - 1; index >= 0; index -= 1) {
@@ -96,10 +96,10 @@ export class CaptureJournal {
   async capture(target: FsTarget, value: object | undefined): Promise<void> {
     const actor = mutationActor(value)
     if (actor === undefined) return
-    const path = requestedPath(actor)
+    const paths = requestedPaths(actor)
     const cwd = actor.agent.session.header.cwd
     const turn = openTurn(actor.agent.session)
-    if (path === undefined || cwd === undefined || turn === undefined) return
+    if (paths.length === 0 || cwd === undefined || turn === undefined) return
 
     const sessionId = actor.agent.session.header.id
     const targetKey = String(target.targetKey)
@@ -116,8 +116,25 @@ export class CaptureJournal {
       ? await this.ctx.fs.resolve(cwd)
       : await this.ctx.fs.resolve(cwd, { signal: actor.signal })
     if (!this.ctx.fs.contains(cwdTarget, target)) return
-    const pathInfo = await this.ctx.fs.lstat(path, { cwd }, actor.signal)
-    if (pathInfo?.type === 'symlink') return
+    const argumentCwd = this.ctx.workingDirectory.get(actor.agent.session)
+    let pathInfo: FsPathInfo | undefined
+    let eligiblePath = false
+    for (const path of paths) {
+      let resolved: FsTarget
+      try {
+        resolved = await this.ctx.fs.resolve(path, { cwd: argumentCwd, ...(actor.signal === undefined ? {} : { signal: actor.signal }) })
+      } catch (error) {
+        if (error instanceof FsError && error.code !== 'FS_ABORTED') continue
+        throw error
+      }
+      if (resolved.targetKey !== target.targetKey) continue
+      const info = await this.ctx.fs.lstat(path, { cwd: argumentCwd }, actor.signal)
+      if (info?.type === 'symlink') continue
+      pathInfo = info
+      eligiblePath = true
+      break
+    }
+    if (!eligiblePath) return
 
     let before: CheckpointRecord['before']
     if (pathInfo === undefined) {

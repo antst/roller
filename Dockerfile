@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:24.9.0-bookworm-slim
 
 ENV CI=true COREPACK_HOME=/tmp/corepack NPM_CONFIG_CACHE=/tmp/npm-cache LANG=C.UTF-8 LC_ALL=C.UTF-8
 
@@ -6,6 +6,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends git \
   && rm -rf /var/lib/apt/lists/* \
   && corepack enable \
+  && corepack install --global pnpm@11.7.0 \
   && mkdir -p /workspace/.pnpm-store /workspace/node_modules /workspace/packages/roller/node_modules \
   && chmod 0777 /workspace/.pnpm-store /workspace/node_modules /workspace/packages/roller/node_modules
 

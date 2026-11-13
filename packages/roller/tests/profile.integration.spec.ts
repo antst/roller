@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import {
-  mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync,
+  mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -39,6 +39,9 @@ describe('installed profile', () => {
       DSH_HOME: home,
       DSH_TELEMETRY_DISABLED: '1',
       NO_COLOR: '1',
+      PNPM_CONFIG_STORE_DIR: join(directory, 'pnpm-store'),
+      PNPM_CONFIG_CACHE_DIR: join(directory, 'pnpm-cache'),
+      npm_config_cache: join(directory, 'npm-cache'),
     }
     try {
       run('pnpm', ['--dir', rollerPackage, 'pack', '--pack-destination', directory], env)
@@ -63,6 +66,8 @@ describe('installed profile', () => {
         'add', '--save-exact', '--config.resolution-mode=time-based',
         `@deepseek-ai/dsh-llm-replay@${dshVersion}`,
       ], env, profileDir)
+      const modules = JSON.parse(readFileSync(join(profileDir, 'node_modules/.modules.yaml'), 'utf8')) as { storeDir: string }
+      expect(realpathSync(modules.storeDir)).toBe(realpathSync(join(directory, 'pnpm-store', 'v11')))
       writeFileSync(join(profileDir, 'cordis.patch.yml'), `
 - id: llm-deepseek
   disabled: true

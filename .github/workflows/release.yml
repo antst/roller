@@ -15,11 +15,18 @@ concurrency:
 
 jobs:
   gate:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
-        dsh: [0.2.0-rc.2, 0.2.1-alpha.2]
+        dsh: [0.2.2-rc.3]
+        os: [ubuntu-latest, macos-15]
+        node: ['24.9.0']
+        include:
+          - dsh: 0.2.2-rc.3
+            os: ubuntu-latest
+            node: '26'
     env:
       DSH_TEST_VERSION: ${{ matrix.dsh }}
     steps:
@@ -27,9 +34,18 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: pnpm
-      - run: bash scripts/gate-docker.sh
+      - run: node --version
+      - if: matrix.os == 'ubuntu-latest' && matrix.node == '24.9.0'
+        run: bash scripts/gate-docker.sh
+      - if: matrix.os != 'ubuntu-latest' || matrix.node != '24.9.0'
+        run: node scripts/run-version-gate.mjs
+      - name: Native below-floor add refusal
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '24.9.0'
+        run: |
+          pnpm --dir packages/roller pack --pack-destination "$RUNNER_TEMP"
+          node scripts/prove-below-floor.mjs "$RUNNER_TEMP/antst-roller-0.2.0.tgz" "$RUNNER_TEMP/roller-floor-evidence"
 
   publish:
     needs: gate
@@ -40,7 +56,7 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24.9.0
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
